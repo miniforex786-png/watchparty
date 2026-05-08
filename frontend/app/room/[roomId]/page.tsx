@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { ChatPanel } from "@/components/ChatPanel";
 import { RoomHeader } from "@/components/RoomHeader";
@@ -13,11 +13,14 @@ export default function RoomPage() {
   const searchParams = useSearchParams();
   const roomId = params.roomId;
 
-  const username = useMemo(() => {
+  const usernameRef = useRef<string>("");
+  if (!usernameRef.current) {
     const fromQuery = searchParams.get("username");
-    if (fromQuery && fromQuery.trim().length >= 2) return fromQuery.trim();
-    return `Guest-${Math.random().toString(36).slice(2, 6)}`;
-  }, [searchParams]);
+    usernameRef.current = fromQuery && fromQuery.trim().length >= 2
+      ? fromQuery.trim()
+      : `Guest-${Math.random().toString(36).slice(2, 6)}`;
+  }
+  const username = usernameRef.current;
 
   const { connected, isHost, playback, users, hostSocketId, messages, emitSyncState, emitSeek, sendMessage } = useRoomSocket({
     roomId,

@@ -42,7 +42,22 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
   const playerRef = useRef<YTPlayer | null>(null);
   const syncingRef = useRef(false);
   const playerReadyRef = useRef(false);
+  const isHostRef = useRef(isHost);
+  const onSyncStateRef = useRef(onSyncState);
+  const onSeekRef = useRef(onSeek);
   const containerId = useMemo(() => `yt-player-${Math.random().toString(36).slice(2, 9)}`, []);
+
+  useEffect(() => {
+    isHostRef.current = isHost;
+  }, [isHost]);
+
+  useEffect(() => {
+    onSyncStateRef.current = onSyncState;
+  }, [onSyncState]);
+
+  useEffect(() => {
+    onSeekRef.current = onSeek;
+  }, [onSeek]);
 
   useEffect(() => {
     const scriptId = "youtube-iframe-api";
@@ -69,13 +84,13 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
             playerReadyRef.current = true;
           },
           onStateChange: (event: YTPlayerEvent) => {
-            if (!isHost || syncingRef.current || !playerReadyRef.current) return;
+            if (!isHostRef.current || syncingRef.current || !playerReadyRef.current) return;
             const player = event.target;
             if (!player || typeof player.getVideoData !== "function" || typeof player.getCurrentTime !== "function") return;
             const timestamp = player.getCurrentTime();
             const videoId = player.getVideoData().video_id;
-            if (event.data === window.YT.PlayerState.PLAYING) onSyncState({ videoId, timestamp, status: "playing" });
-            if (event.data === window.YT.PlayerState.PAUSED) onSyncState({ videoId, timestamp, status: "paused" });
+            if (event.data === window.YT.PlayerState.PLAYING) onSyncStateRef.current({ videoId, timestamp, status: "playing" });
+            if (event.data === window.YT.PlayerState.PAUSED) onSyncStateRef.current({ videoId, timestamp, status: "paused" });
           }
         }
       });
@@ -92,7 +107,7 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
       if (playerRef.current?.destroy) playerRef.current.destroy();
       playerRef.current = null;
     };
-  }, [containerId, isHost, onSyncState, playback.videoId]);
+  }, [containerId, playback.videoId]);
 
   useEffect(() => {
     if (!playerRef.current || !playerReadyRef.current) return;
@@ -124,7 +139,7 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
 
     const interval = window.setInterval(() => {
       const time = playerRef.current?.getCurrentTime();
-      if (typeof time === "number") onSeek(time);
+      if (typeof time === "number") onSeekRef.current(time);
     }, 4000);
 
     return () => window.clearInterval(interval);

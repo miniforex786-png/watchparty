@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getSocket } from "@/lib/socket";
 import { ChatMessage, PlaybackState, PlaybackStatus, RoomUser } from "@/types";
@@ -89,22 +89,22 @@ export function useRoomSocket({ roomId, username }: UseRoomSocketArgs) {
 
   const isHost = socketId !== "" && socketId === hostSocketId;
 
-  const emitSyncState = (next: { videoId: string; timestamp: number; status: PlaybackStatus }) => {
+  const emitSyncState = useCallback((next: { videoId: string; timestamp: number; status: PlaybackStatus }) => {
     if (!isHost || suppressOutgoingRef.current) return;
     const payload = { roomId, ...next };
     if (next.status === "playing") socket.emit("play_video", payload);
     else socket.emit("pause_video", payload);
     socket.emit("sync_state", payload);
-  };
+  }, [isHost, roomId, socket]);
 
-  const emitSeek = (timestamp: number) => {
+  const emitSeek = useCallback((timestamp: number) => {
     if (!isHost || suppressOutgoingRef.current) return;
     socket.emit("seek_video", { roomId, timestamp });
-  };
+  }, [isHost, roomId, socket]);
 
-  const sendMessage = (message: string) => {
+  const sendMessage = useCallback((message: string) => {
     socket.emit("send_message", { roomId, message });
-  };
+  }, [roomId, socket]);
 
   return {
     connected,
