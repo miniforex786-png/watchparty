@@ -6,7 +6,7 @@ import { PlaybackState } from "@/types";
 declare global {
   interface Window {
     YT: {
-      Player: new (id: string, options: Record<string, unknown>) => YTPlayer;
+      Player: new (target: string | HTMLElement, options: Record<string, unknown>) => YTPlayer;
       PlayerState: {
         PLAYING: number;
         PAUSED: number;
@@ -99,13 +99,13 @@ function buildVidkingEmbedUrl(path: string, playback: PlaybackState): string {
 
 export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlayerProps) {
   const playerRef = useRef<YTPlayer | null>(null);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const syncingRef = useRef(false);
   const playerReadyRef = useRef(false);
   const isHostRef = useRef(isHost);
   const onSyncStateRef = useRef(onSyncState);
   const onSeekRef = useRef(onSeek);
   const media = useMemo(() => parsePlaybackVideoId(playback.videoId), [playback.videoId]);
-  const containerId = useMemo(() => `yt-player-${Math.random().toString(36).slice(2, 9)}`, []);
   const [hostInput, setHostInput] = useState(playback.videoId);
   const hostVidkingTimeRef = useRef(0);
 
@@ -137,8 +137,9 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
     }
 
     const initPlayer = () => {
+      if (!playerContainerRef.current || playerRef.current) return;
       playerReadyRef.current = false;
-      playerRef.current = new window.YT.Player(containerId, {
+      playerRef.current = new window.YT.Player(playerContainerRef.current, {
         videoId: media.value,
         playerVars: {
           autoplay: 0,
@@ -172,10 +173,14 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
         window.onYouTubeIframeAPIReady = undefined;
       }
       playerReadyRef.current = false;
-      if (playerRef.current?.destroy) playerRef.current.destroy();
+      try {
+        if (playerRef.current?.destroy) playerRef.current.destroy();
+      } catch {
+        // YouTube API may attempt DOM cleanup after React has already replaced the node.
+      }
       playerRef.current = null;
     };
-  }, [containerId, media.provider, media.value]);
+  }, [media.provider]);
 
   useEffect(() => {
     if (media.provider !== "youtube") return;
@@ -294,7 +299,7 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
 
       <div className="overflow-hidden rounded-xl border border-border bg-black shadow-lg">
         {media.provider === "youtube" ? (
-          <div id={containerId} className="aspect-video w-full" />
+          <div ref={playerContainerRef} className="aspect-video w-full" />
         ) : (
           <iframe
             src={vidkingSrc}
