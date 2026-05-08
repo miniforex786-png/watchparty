@@ -23,6 +23,12 @@ interface YTPlayer {
   getCurrentTime: () => number;
   getVideoData: () => { video_id: string };
   loadVideoById: (videoId: string, startSeconds?: number) => void;
+  destroy?: () => void;
+}
+
+interface YTPlayerEvent {
+  data: number;
+  target: YTPlayer;
 }
 
 interface VideoPlayerProps {
@@ -35,6 +41,7 @@ interface VideoPlayerProps {
 export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlayerProps) {
   const playerRef = useRef<YTPlayer | null>(null);
   const syncingRef = useRef(false);
+  const playerReadyRef = useRef(false);
   const containerId = useMemo(() => `yt-player-${Math.random().toString(36).slice(2, 9)}`, []);
 
   useEffect(() => {
@@ -47,6 +54,7 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
     }
 
     const initPlayer = () => {
+      playerReadyRef.current = false;
       playerRef.current = new window.YT.Player(containerId, {
         videoId: playback.videoId,
         playerVars: {
@@ -56,10 +64,16 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
           modestbranding: 1
         },
         events: {
-          onStateChange: (event: { data: number }) => {
-            if (!isHost || syncingRef.current || !playerRef.current) return;
-            const timestamp = playerRef.current.getCurrentTime();
-            const videoId = playerRef.current.getVideoData().video_id;
+          onReady: (event: YTPlayerEvent) => {
+            playerRef.current = event.target;
+            playerReadyRef.current = true;
+          },
+          onStateChange: (event: YTPlayerEvent) => {
+            if (!isHost || syncingRef.current || !playerReadyRef.current) return;
+            const player = event.target;
+            if (!player || typeof player.getVideoData !== "function" || typeof player.getCurrentTime !== "function") return;
+            const timestamp = player.getCurrentTime();
+            const videoId = player.getVideoData().video_id;
             if (event.data === window.YT.PlayerState.PLAYING) onSyncState({ videoId, timestamp, status: "playing" });
             if (event.data === window.YT.PlayerState.PAUSED) onSyncState({ videoId, timestamp, status: "paused" });
           }
@@ -69,12 +83,22 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
 
     if (window.YT?.Player) initPlayer();
     else window.onYouTubeIframeAPIReady = initPlayer;
+
+    return () => {
+      if (window.onYouTubeIframeAPIReady === initPlayer) {
+        window.onYouTubeIframeAPIReady = undefined;
+      }
+      playerReadyRef.current = false;
+      if (playerRef.current?.destroy) playerRef.current.destroy();
+      playerRef.current = null;
+    };
   }, [containerId, isHost, onSyncState, playback.videoId]);
 
   useEffect(() => {
-    if (!playerRef.current) return;
+    if (!playerRef.current || !playerReadyRef.current) return;
 
     const player = playerRef.current;
+    if (typeof player.getVideoData !== "function" || typeof player.getCurrentTime !== "function") return;
     const currentVideoId = player.getVideoData().video_id;
     const currentTime = player.getCurrentTime();
     const drift = Math.abs(currentTime - playback.timestamp);
@@ -96,7 +120,7 @@ export function VideoPlayer({ playback, isHost, onSyncState, onSeek }: VideoPlay
   }, [playback]);
 
   useEffect(() => {
-    if (!isHost || !playerRef.current) return;
+    if (!isHost || !playerRef.current || !playerReadyRef.current) return;
 
     const interval = window.setInterval(() => {
       const time = playerRef.current?.getCurrentTime();
