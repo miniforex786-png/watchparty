@@ -139,6 +139,7 @@ Backend: `http://localhost:4000`
 4. Add env vars:
    - `PORT` (Railway/Render may provide this automatically)
    - `FRONTEND_ORIGIN=https://<your-vercel-domain>`
+   https://watchparty-frontend-pi.vercel.app/
 5. Deploy and copy backend URL.
 
 ## Frontend (Vercel)
@@ -147,6 +148,7 @@ Backend: `http://localhost:4000`
 2. Set Root Directory to `frontend`.
 3. Set env var:
    - `NEXT_PUBLIC_BACKEND_URL=https://<your-backend-domain>`
+   https://watchparty-backend-production-bb5d.up.railway.app
 4. Deploy.
 5. Update backend `FRONTEND_ORIGIN` to include final Vercel domain if needed.
 
@@ -155,6 +157,7 @@ Backend: `http://localhost:4000`
 - Room create/join with shareable link
 - Active user list with host label
 - YouTube synced playback
+- Experimental Vidking embed playback (event-based sync)
 - Host play/pause/seek controls
 - Drift correction and loop prevention
 - Realtime room chat

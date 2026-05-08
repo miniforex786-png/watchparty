@@ -7,7 +7,7 @@ export const joinRoomSchema = z.object({
 
 export const syncStateSchema = z.object({
   roomId: z.string().trim().min(3).max(64),
-  videoId: z.string().trim().min(3).max(32),
+  videoId: z.string().trim().min(3).max(512),
   timestamp: z.number().min(0).max(86400),
   status: z.enum(["playing", "paused"])
 });
